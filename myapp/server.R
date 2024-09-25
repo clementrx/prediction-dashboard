@@ -12,7 +12,7 @@ server <- function(input, output, session) {
     
     req(input$file)  # Ensure file is uploaded
     data <- read.csv2(input$file$datapath)
-    # data <- read.csv2("pred_20240924.csv")
+    # data <- read.csv2("pred_20240925.csv")
     
     data = data %>% 
       mutate(P1 = ifelse(is.na(P1), 0, P1)) %>%
@@ -33,6 +33,20 @@ server <- function(input, output, session) {
         is.na(emoji) ~ "🤔",
         TRUE ~ emoji
       ),
+      # ferrure = case_when(
+      #   shoeing == "1" ~ "😊",
+      #   shoeing == "2" ~ "😐",
+      #   shoeing == "3" ~ "☹️",
+      #   is.na(shoeing) ~ "🤔",
+      #   TRUE ~ shoeing
+      # ),
+      # last_ferrure = case_when(
+      #   last1_shoes == "1" ~ "😊",
+      #   last1_shoes == "2" ~ "😐",
+      #   last1_shoes == "3" ~ "☹️",
+      #   is.na(last1_shoes) ~ "🤔",
+      #   TRUE ~ last1_shoes
+      # ),
       horseName = ifelse(PREP_D4 == 1, paste0(horseName, " ⭐"), horseName),
       horseName = ifelse(CLASS_INF == 1, paste0(horseName, " ⬇️"), horseName),
       last_comment = ifelse(is.na(last_comment), "", last_comment),
@@ -93,6 +107,10 @@ server <- function(input, output, session) {
              driver_ratio_topp, trainer_ratio_topp, horse_ratio_topp,
              #cote, 
              smile,
+             shoeing, 
+             last1_shoes,
+             last2_shoes,
+             last3_shoes,
              jour_last_course, mean_ratio_temps_last12_month,
              P_global,
              P1, PP, P4,
@@ -115,6 +133,51 @@ server <- function(input, output, session) {
         # PREP_D4 = ifelse(PREP_D4 == 0, "", "1")) %>% 
       # select(-c(horseName, jockeyName, trainerName)) %>% 
       gt() %>%
+      text_transform(
+        locations = cells_body(columns = shoeing),
+        fn = function(x) {
+          vapply(x, generate_images, character(1))
+        }
+      ) %>%
+      # text_transform(
+      #   locations = cells_body(columns = last1_shoes),
+      #   fn = function(x) {
+      #     vapply(x, generate_images, character(1))
+      #   }
+      # ) %>%
+      # text_transform(
+      #   locations = cells_body(columns = last2_shoes),
+      #   fn = function(x) {
+      #     vapply(x, generate_images, character(1))
+      #   }
+      # ) %>%
+      # text_transform(
+      #   locations = cells_body(columns = last3_shoes),
+      #   fn = function(x) {
+      #     vapply(x, generate_images, character(1))
+      #   }
+      # ) %>%
+      cols_merge(
+        columns = c(last1_shoes, last2_shoes, last3_shoes),
+        pattern = "{1};{2};{3}"
+      ) %>%
+      text_transform(
+        locations = cells_body(columns = last1_shoes),
+        fn = function(x) {
+          vapply(x, function(cell) {
+            image1 <- word(cell, 1, sep = ";")
+            image2 <- word(cell, 2, sep = ";")
+            image3 <- word(cell, 3, sep = ";")
+            
+            glue::glue(
+              "<div style='margin-bottom:10px'>{generate_images(image1)}</div>
+           <div style='margin-bottom:10px'>{generate_images(image2)}</div>
+           <div>{generate_images(image3)}</div>"
+            )
+          }, character(1))
+        }
+      ) %>% 
+      # Afficher les images sous la nouvelle colonne
       tab_header(
         title = md(infos1),
         subtitle = paste(infos2)
@@ -159,8 +222,10 @@ server <- function(input, output, session) {
         jour_last_course = 'Repos',
         # formFigs = "musique",
         last_comment = "Commentaire<br>Dernière course",
-        smile = "emoji",
+        smile = "😊",
         formFigs = "musique",
+        shoeing = "Ferrure",
+        last1_shoes = "Ferrure<br>(old)",
         .fn = md) %>% 
       # fmt_currency(columns = cote, decimals = 1, currency = 'EUR', placement = 'right') %>% 
       # gt_color_rows(.pred_win, palette = "ggsci::blue_material", domain = c(0,1)) %>% 
@@ -313,6 +378,7 @@ server <- function(input, output, session) {
         PP ~ px(80),
         P4 ~ px(70),
         last_comment ~ px(200),
+        smile ~ px(30),
         formFigs ~ px(200),
         horseName ~ px(100),
         driver_ratio_topp ~ px(70),
